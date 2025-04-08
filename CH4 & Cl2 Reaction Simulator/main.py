@@ -8,12 +8,13 @@ import tkinter as tk
 pygame.init()
 pygame.display.set_caption("CH4 & Cl2 reaction simulator")
 
-CARBON = (128, 128, 128)
+CARBON = (144, 144, 144)
 HYDROGEN = (255, 255, 255)
-CHLORINE = (0, 255, 0)
+CHLORINE = (31, 240, 31)
 
 light_on = False
 paused = False
+
 
 def update_background():
     if light_on:
@@ -21,8 +22,10 @@ def update_background():
     else:
         return (0, 0, 0)
 
+
 screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
 clock = pygame.time.Clock()
+
 
 class Particle:
     def __init__(self, x, y, vx, vy, kind):
@@ -31,14 +34,14 @@ class Particle:
         self.vx = vx
         self.vy = vy
         self.kind = kind
-        self.timer = random.randint(500, 1000) if kind == 'Cl2' else None
+        self.timer = None
         self.angle = 0
         self.counting = False
 
     def start_timer(self):
         if self.kind == 'Cl2':
             self.counting = True
-            self.timer = random.randint(500, 1000)
+            self.timer = random.randint(500, 2000)
 
     def stop_timer(self):
         self.counting = False
@@ -62,6 +65,7 @@ class Particle:
     def draw(self, screen):
         x, y = int(self.x), int(self.y)
         angle = self.angle
+
         def rotate_point(cx, cy, px, py, a):
             s, c = math.sin(a), math.cos(a)
             px -= cx
@@ -152,7 +156,7 @@ class Particle:
             for dx, dy in [(0, 10), (-10, 0), (0, -10)]:
                 h_x, h_y = rotate_point(C1_x, C1_y, C1_x + dx, C1_y + dy, angle)
                 pygame.draw.circle(screen, HYDROGEN, (h_x, h_y), 4)
-            
+
             for dx, dy in [(10, 0), (0, 10), (0, -10)]:
                 h_x, h_y = rotate_point(C2_x, C2_y, C2_x + dx, C2_y + dy, angle)
                 pygame.draw.circle(screen, HYDROGEN, (h_x, h_y), 4)
@@ -160,7 +164,9 @@ class Particle:
             pygame.draw.circle(screen, CARBON, (C1_x, C1_y), 8)
             pygame.draw.circle(screen, CARBON, (C2_x, C2_y), 8)
 
+
 particles = []
+
 
 def get_molecule_counts():
     root = tk.Tk()
@@ -197,6 +203,7 @@ def get_molecule_counts():
 
     return result.get("CH4", 2), result.get("Cl2", 10)
 
+
 def init(n_CH4, n_Cl2):
     particles.clear()
     width, height = screen.get_size()
@@ -218,11 +225,37 @@ def init(n_CH4, n_Cl2):
     if light_on:
         for p in particles:
             p.start_timer()
-            
+
+
 def distance(p1, p2):
     return math.hypot(p1.x - p2.x, p1.y - p2.y)
 
+
+def repel(p1, p2):
+    dx = p2.x - p1.x
+    dy = p2.y - p1.y
+    dist = math.hypot(dx, dy)
+    if dist == 0:
+        return
+    nx, ny = dx / dist, dy / dist
+    p1.vx, p1.vy = -nx, -ny
+    p2.vx, p2.vy = nx, ny
+
+
 def handle_reactions():
+    racials_chain = {
+        'CH4': 'CH3•',
+        'CH3Cl': 'CH2Cl•',
+        'CH2Cl2': 'CHCl2•',
+        'CHCl3': 'CCl3•',
+    }
+    aloalkanes_chain = {
+        'CH3•': 'CH3Cl',
+        'CH2Cl•': 'CH2Cl2',
+        'CHCl2•': 'CHCl3',
+        'CCl3•': 'CCl4'
+    }
+
     new_particles = []
     removed = set()
     for i, p1 in enumerate(particles):
@@ -244,78 +277,44 @@ def handle_reactions():
             x, y = (p1.x + p2.x) / 2, (p1.y + p2.y) / 2
 
             if kinds == {'Cl•'}:
-                # 自由基合并
-                new_particles.append(Particle(x, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl2'))
+                new_cl2 = Particle(x, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl2')
+                if light_on:
+                    new_cl2.start_timer()
+                new_particles.append(new_cl2)
                 removed.update([i, j])
             elif 'Cl•' in kinds:
                 # 链式反应
                 other = (p1.kind if p2.kind == 'Cl•' else p2.kind)
-                replacements = {
-                    'CH4': 'CH3•',
-                    'CH3Cl': 'CH2Cl•',
-                    'CH2Cl2': 'CHCl2•',
-                    'CHCl3': 'CCl3•',
-                }
-                if other in replacements:
-                    new_particles.append(Particle(x - 20, y, random.uniform(-1, 1), random.uniform(-1, 1), replacements[other]))
+                if other in racials_chain:
+                    new_particles.append(Particle(x - 20, y, random.uniform(-1, 1),
+                                         random.uniform(-1, 1), racials_chain[other]))
                     new_particles.append(Particle(x + 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'HCl'))
                     removed.update([i, j])
-                elif other in ['CH3•', 'CH2Cl•', 'CHCl2•', 'CCl3•']:
-                    new_name = {
-                        'CH3•': 'CH3Cl',
-                        'CH2Cl•': 'CH2Cl2',
-                        'CHCl2•': 'CHCl3',
-                        'CCl3•': 'CCl4'
-                    }[other]
-                    new_particles.append(Particle(x, y, random.uniform(-1, 1), random.uniform(-1, 1), new_name))
+                elif other in aloalkanes_chain:
+                    new_particles.append(Particle(x, y, random.uniform(-1, 1),
+                                         random.uniform(-1, 1), aloalkanes_chain[other]))
                     removed.update([i, j])
                 else:
-                    dx = p2.x - p1.x
-                    dy = p2.y - p1.y
-                    dist = math.hypot(dx, dy)
-                    if dist == 0:
-                        continue
-                    nx, ny = dx / dist, dy / dist
-                    p1.vx, p1.vy = -nx, -ny
-                    p2.vx, p2.vy = nx, ny
+                    repel(p1, p2)
+            elif 'Cl2' in kinds:
+                other = (p1.kind if p2.kind == 'Cl2' else p2.kind)
+                if other in aloalkanes_chain:
+                    new_particles.append(Particle(x - 20, y, random.uniform(-1, 1),
+                                         random.uniform(-1, 1), aloalkanes_chain[other]))
+                    new_particles.append(Particle(x + 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl•'))
+                    removed.update([i, j])
+                else:
+                    repel(p1, p2)
             elif kinds == {'CH3•'}:
                 # CH3•之间反应生成C2H6
                 new_particles.append(Particle(x - 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'C2H6'))
                 removed.update([i, j])
-            elif kinds == {'CH3•', 'Cl2'}:
-                # CH3•与Cl2反应生成CH3Cl和Cl•
-                new_particles.append(Particle(x - 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'CH3Cl'))
-                new_particles.append(Particle(x + 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl•'))
-                removed.update([i, j])
-            elif kinds == {'CH2Cl•', 'Cl2'}:
-                # CH2Cl•与Cl2反应生成CH2Cl2和Cl•
-                new_particles.append(Particle(x - 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'CH2Cl2'))
-                new_particles.append(Particle(x + 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl•'))
-                removed.update([i, j])
-            elif kinds == {'CHCl2•', 'Cl2'}:
-                # CHCl2•与Cl2反应生成CHCl3和Cl•
-                new_particles.append(Particle(x - 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'CHCl3'))
-                new_particles.append(Particle(x + 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl•'))
-                removed.update([i, j])
-            elif kinds == {'CCl3•', 'Cl2'}:
-                # CCl3•与Cl2反应生成CCl4和Cl•
-                new_particles.append(Particle(x - 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'CCl4'))
-                new_particles.append(Particle(x + 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl•'))
-                removed.update([i, j])
             else:
-                # 如果不发生反应，弹开
-                dx = p2.x - p1.x
-                dy = p2.y - p1.y
-                dist = math.hypot(dx, dy)
-                if dist == 0:
-                    continue
-                nx, ny = dx / dist, dy / dist
-                p1.vx, p1.vy = -nx, -ny
-                p2.vx, p2.vy = nx, ny
-
+                repel(p1, p2)
     for i in sorted(removed, reverse=True):
         del particles[i]
     particles.extend(new_particles)
+
 
 if __name__ == "__main__":
     n_ch4, n_cl2 = get_molecule_counts()
@@ -332,8 +331,8 @@ if __name__ == "__main__":
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                elif event.key == pygame.K_p:  # 检测P键
-                    paused = not paused  # 切换暂停状态
+                elif event.key == pygame.K_p:
+                    paused = not paused
                 elif event.key == pygame.K_l:
                     light_on = not light_on
                     if light_on:
