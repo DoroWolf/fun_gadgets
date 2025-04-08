@@ -148,8 +148,8 @@ class Particle:
                 pygame.draw.circle(screen, CHLORINE, (rx, ry), 10)
             pygame.draw.circle(screen, CARBON, (x, y), 8)
         elif self.kind == 'C2H6':
-            C1_x, C1_y = x - 8, y
-            C2_x, C2_y = x + 8, y
+            C1_x, C1_y = x - 6, y
+            C2_x, C2_y = x + 6, y
             C1_x, C1_y = rotate_point(x, y, C1_x, C1_y, angle)
             C2_x, C2_y = rotate_point(x, y, C2_x, C2_y, angle)
 
