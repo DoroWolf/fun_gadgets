@@ -215,6 +215,10 @@ def init(n_CH4, n_Cl2):
         y = random.randint(center_y - range_y, center_y + range_y)
         particles.append(Particle(x, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl2'))
 
+    if light_on:
+        for p in particles:
+            p.start_timer()
+            
 def distance(p1, p2):
     return math.hypot(p1.x - p2.x, p1.y - p2.y)
 
