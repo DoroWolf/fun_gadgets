@@ -1,6 +1,6 @@
+import math
 import random
 import sys
-import math
 
 import pygame
 import tkinter as tk
@@ -244,9 +244,11 @@ def handle_reactions():
             x, y = (p1.x + p2.x) / 2, (p1.y + p2.y) / 2
 
             if kinds == {'Cl•'}:
+                # 自由基合并
                 new_particles.append(Particle(x, y, random.uniform(-1, 1), random.uniform(-1, 1), 'Cl2'))
                 removed.update([i, j])
             elif 'Cl•' in kinds:
+                # 链式反应
                 other = (p1.kind if p2.kind == 'Cl•' else p2.kind)
                 replacements = {
                     'CH4': 'CH3•',
@@ -277,7 +279,7 @@ def handle_reactions():
                     p1.vx, p1.vy = -nx, -ny
                     p2.vx, p2.vy = nx, ny
             elif kinds == {'CH3•'}:
-                # CH3•与Cl2反应生成CH3Cl和Cl•
+                # CH3•之间反应生成C2H6
                 new_particles.append(Particle(x - 20, y, random.uniform(-1, 1), random.uniform(-1, 1), 'C2H6'))
                 removed.update([i, j])
             elif kinds == {'CH3•', 'Cl2'}:
